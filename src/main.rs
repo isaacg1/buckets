@@ -24,15 +24,22 @@ fn main() {
 
     //homogenous job service requirement:
     //let job_req_dist = Dist::Constant(0.45);
-    let job_req_dist = Dist::Uniform(0.0, 1.0);
+    // let job_req_dist = Dist::Uniform(0.0, 1.0);
+    // let job_req_dist = Dist::MUnif(
+    //     [0.2, 0.8],   
+    //     [0.8, 0.2],   
+    // );
+    // let job_req_dist = Dist::Triangular(0.6);
+    let job_req_dist = Dist::BExp(0.5);
+    // let job_req_dist = Dist::BLomax(6.0, 1.0);
 
-    let policy = Policy::AdaptiveBPT(2.0);
+    let policy = Policy::AdaptiveBPTB(2.0);
     //let policy = Policy::IPB(8);
     println!(
         "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
         policy, dist, job_req_dist, num_jobs, seed
     );
-    for lam_base in 1..20 {
+    for lam_base in 10..23 {
         let lambda = lam_base as f64 / 10.0;
         let check = simulate(
             policy,
@@ -70,7 +77,7 @@ enum Dist {
     MUnif([f64; 2], [f64; 2]), // hy: mixed uniform with two breakpoints
     //MUnif(Vec<f64>, Vec<f64>), // hy: mixed uniform with decreasing dexsity
     Triangular(f64), //hy: triangular distribution with right endpoint u
-    BExp(f64), // hy: Bounded exponential distribution: exponential truncated to [0,1], density ∝ e^(−λ t)
+    BExp(f64), // hy: Bounded exponential distribution: exponential truncated to [0,1], density \prop e^(−\lambda t)
 }
 
 impl Dist {
@@ -142,7 +149,7 @@ impl Dist {
                 unreachable!()
             }
             Dist::Triangular(u) => {
-                // hy: Inverse‐CDF: F(t) = (2ut - t²)/u², so
+                // hy: Inverse‐CDF: F(t) = (2ut - t^2)/u^2, so
                 // hy: t = u * (1 - sqrt(1 - U)), U~Unif(0,1)
                 let U = rng.r#gen::<f64>();
                 u * (1.0 - (1.0 - U).sqrt())
@@ -171,17 +178,16 @@ impl Dist {
                 let r = t.powf(-alpha);
                 let c = 1.0 - r;
 
-                // term1 = α·t^(1-α)/(1-α), term2 = t^(-α), term3 = 1/(1-α)
                 let term1 = alpha * t.powf(1.0 - alpha) / (1.0 - alpha);
                 let term2 = t.powf(-alpha);
                 let term3 = 1.0 / (1.0 - alpha);
 
-                // E[X] = λ·( (term1 - term3) + term2 ) / c
+                // E[X] = \lambda·( (term1 - term3) + term2 ) / c
                 lambda * ((term1 - term3) + term2) / c
             }
             Dist::MUnif(v, p) => {
-                // E[X] = Σ_i p[i] · E[U(v[i−1], v[i])]
-                //      = Σ_i p[i] · (v[i−1] + v[i]) / 2
+                // E[X] = \sum_i p[i] · E[U(v[i−1], v[i])]
+                //      = \sum_i p[i] · (v[i−1] + v[i]) / 2
                 let d = v.len();
                 p.iter()
                     .enumerate()
@@ -218,21 +224,17 @@ impl Dist {
                 let r = t.powf(-alpha);
                 let c = 1.0 - r;
 
-                // B_u = t^(2-α)/(2-α) - 2·t^(1-α)/(1-α) + t^(-α)/(-α)
                 let bu = t.powf(2.0 - alpha) / (2.0 - alpha)
                     - 2.0 * t.powf(1.0 - alpha) / (1.0 - alpha)
                     + t.powf(-alpha) / (-alpha);
 
-                // B_l = 1/(2-α) - 2/(1-α) - 1/α   (the same expressions at t=1)
                 let bl = 1.0 / (2.0 - alpha) - 2.0 / (1.0 - alpha) - 1.0 / alpha;
 
-                // ∫0^1 x^2 g(x) dx = α·λ²·(B_u - B_l)
-                // E[X²] = (1/c) · that integral
+
                 alpha * lambda * lambda * (bu - bl) / c
             }
             Dist::MUnif(v, p) => {
-                // E[X²] = Σ_i p[i] · E[U(v[i−1],v[i])²]
-                //      = Σ_i p[i] · (b³ − a³) / [3(b − a)]
+
                 let d = v.len();
                 p.iter()
                     .enumerate()
@@ -247,7 +249,6 @@ impl Dist {
             }
             Dist::Triangular(u) => u * u / 6.0,
             Dist::BExp(lambda) => {
-                // E[X²] = [2 − (λ² + 2λ + 2)e^(−λ)] / [λ² (1−e^(−λ))]
                 let r = (-lambda).exp();
                 let c = 1.0 - r;
                 let num = 2.0 - (lambda * lambda + 2.0 * lambda + 2.0) * r;
@@ -940,9 +941,9 @@ fn length_to_k(p: f64, length: usize) -> usize {
         1
     } else {
         let root = (length as f64).powf(1.0 / p);
-        // 2. Round up to the nearest integer
+        // Round up to the nearest integer
         let n = root.ceil() as usize;
-        // 3. Next power of two ≥ n
+        // Next power of two \geq n
         n.next_power_of_two()
     }
 }
