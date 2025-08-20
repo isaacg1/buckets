@@ -7,6 +7,7 @@ use rand_distr::Gamma;
 use rand_distr::Uniform;
 use smallvec::{SmallVec, smallvec};
 use std::f64::INFINITY;
+use statrs::distribution::{Normal as StatNormal, ContinuousCDF};
 
 const EPSILON: f64 = 1e-8;
 const DEBUG: bool = false;
@@ -19,7 +20,8 @@ fn main() {
     //let dist = Dist::Uniform(0.01,1.0);
     let dist = Dist::Expon(1.0);
     let num_servers = 1;
-    let num_jobs = 1_000_000;
+    // let num_jobs = 1_000_000;
+    let num_jobs = 500_000;
     let seed = 3;
 
     //homogenous job service requirement:
@@ -30,16 +32,18 @@ fn main() {
     //     [0.8, 0.2],   
     // );
     // let job_req_dist = Dist::Triangular(0.6);
-    let job_req_dist = Dist::BExp(0.5);
+    // let job_req_dist = Dist::BExp(0.5);
     // let job_req_dist = Dist::BLomax(6.0, 1.0);
+    let job_req_dist = Dist::TruncatedN(0.7, 0.25);
 
-    let policy = Policy::AdaptiveBPTB(2.0);
-    //let policy = Policy::IPB(8);
+    // let policy = Policy::AdaptiveBPTB(2.0);
+    let policy = Policy::IPB(8);
+    // let policy = Policy::AdaptiveIPB(2.0);
     println!(
         "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
         policy, dist, job_req_dist, num_jobs, seed
     );
-    for lam_base in 10..23 {
+    for lam_base in 1..30 {
         let lambda = lam_base as f64 / 10.0;
         let check = simulate(
             policy,
@@ -78,6 +82,7 @@ enum Dist {
     //MUnif(Vec<f64>, Vec<f64>), // hy: mixed uniform with decreasing dexsity
     Triangular(f64), //hy: triangular distribution with right endpoint u
     BExp(f64), // hy: Bounded exponential distribution: exponential truncated to [0,1], density \prop e^(−\lambda t)
+    TruncatedN(f64, f64), // hy: Bounded normal distribution: normal distribution truncated to [0,1]
 }
 
 impl Dist {
@@ -162,6 +167,23 @@ impl Dist {
                 let inner = 1.0 - u * c;
                 -inner.ln() / lambda
             }
+            Dist::TruncatedN(m, v) => {
+                let sigma = v.sqrt();
+
+                let stdn = StatNormal::new(0.0, 1.0).unwrap();
+
+                let alpha = (0.0 - m) / sigma;
+                let beta  = (1.0 - m) / sigma;
+
+                let fa = stdn.cdf(alpha);
+                let fb = stdn.cdf(beta);
+                let z  = (fb - fa).max(1e-16); 
+                let u: f64 = rng.r#gen();
+                let y = stdn.inverse_cdf(fa + u * z);    
+                let x = m + sigma * y;                  
+
+                x
+            }
         }
     }
     fn mean(&self) -> f64 {
@@ -203,6 +225,21 @@ impl Dist {
                 let r = (-lambda).exp();
                 let c = 1.0 - r;
                 (1.0 - (lambda + 1.0) * r) / (lambda * c)
+            }
+            Dist::TruncatedN(m, v) => {
+                let sigma = v.sqrt();
+                let stdn = StatNormal::new(0.0, 1.0).unwrap();
+
+                let alpha = (0.0 - m) / sigma;
+                let beta  = (1.0 - m) / sigma;
+
+                let fa = stdn.cdf(alpha);
+                let fb = stdn.cdf(beta);
+                let z  = (fb - fa).max(1e-16);
+
+                let phi = |t: f64| (-(t*t)/2.0).exp() / (std::f64::consts::TAU).sqrt();
+                let mu_z = (phi(alpha) - phi(beta)) / z;
+                m + sigma * mu_z
             }
         }
     }
@@ -253,6 +290,26 @@ impl Dist {
                 let c = 1.0 - r;
                 let num = 2.0 - (lambda * lambda + 2.0 * lambda + 2.0) * r;
                 num / (lambda * lambda * c)
+            }
+            Dist::TruncatedN(m, v) => {
+                let sigma = v.sqrt();
+                let stdn = StatNormal::new(0.0, 1.0).unwrap();
+
+                let alpha = (0.0 - m) / sigma;
+                let beta  = (1.0 - m) / sigma;
+
+                let fa = stdn.cdf(alpha);
+                let fb = stdn.cdf(beta);
+                let z  = (fb - fa).max(1e-16);
+
+                let phi = |t: f64| (-(t*t)/2.0).exp() / (std::f64::consts::TAU).sqrt();
+                let mu_z  = (phi(alpha) - phi(beta)) / z;
+                let var_z = 1.0 + (alpha * phi(alpha) - beta * phi(beta)) / z - mu_z * mu_z;
+
+                let ex   = m + sigma * mu_z;
+                let varx = sigma * sigma * var_z;
+
+                varx + ex * ex
             }
         }
     }
