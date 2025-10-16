@@ -21,7 +21,7 @@ fn main() {
     let dist = Dist::Expon(1.0);
     let num_servers = 1;
     // let num_jobs = 1_000_000;
-    let num_jobs = 500_000;
+    let num_jobs = 1_000_000;
     let seed = 3;
 
     //homogenous job service requirement:
@@ -33,17 +33,29 @@ fn main() {
     // );
     // let job_req_dist = Dist::Triangular(0.6);
     // let job_req_dist = Dist::BExp(0.5);
-    // let job_req_dist = Dist::BLomax(6.0, 1.0);
-    let job_req_dist = Dist::TruncatedN(0.7, 0.25);
+    // let job_req_dist = Dist::BLomax(2.0, 1.0);
+    // let job_req_dist = Dist:: TruncatedN(0.8,0.25);
+    // let job_req_dist = Dist:: TwoUnif( 0.45, 0.5, 0.4, 0.28, 0.33, 0.6 );
+    let job_req_dist = Dist:: TwoUnif( 0.22, 0.25, 0.5714, 0.30, 0.33, 0.4286 );
+    // let job_req_dist = Dist::TwoTruncatedN(0.5, 0.04,0.4, 0.2,0.01,0.6);
 
     // let policy = Policy::AdaptiveBPTB(2.0);
-    let policy = Policy::IPB(8);
-    // let policy = Policy::AdaptiveIPB(2.0);
+    // let policy = Policy::FCFS;
+    // let policy = Policy::FCFSB;
+    // let policy = Policy::LSF;
+    // let policy = Policy::MSF;
+    // let policy = Policy::DB(39);
+    // let policy = Policy::DBB(67);
+    // let policy = Policy::BPTB(64);
+    // let policy = Policy::BPTB(64);
+    // let policy = Policy::AdaptiveBPTB(1.5);
+    let policy =Policy:: IPB(12);
     println!(
         "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
         policy, dist, job_req_dist, num_jobs, seed
     );
-    for lam_base in 1..30 {
+    for lam_base in 25..40{
+    // for lam_base in 301..310{//} 1..20 {
         let lambda = lam_base as f64 / 10.0;
         let check = simulate(
             policy,
@@ -83,6 +95,8 @@ enum Dist {
     Triangular(f64), //hy: triangular distribution with right endpoint u
     BExp(f64), // hy: Bounded exponential distribution: exponential truncated to [0,1], density \prop e^(−\lambda t)
     TruncatedN(f64, f64), // hy: Bounded normal distribution: normal distribution truncated to [0,1]
+    TwoUnif (f64, f64, f64, f64, f64, f64,),
+    TwoTruncatedN (f64,  f64, f64,  f64,  f64,  f64),
 }
 
 impl Dist {
@@ -184,6 +198,26 @@ impl Dist {
 
                 x
             }
+
+            Dist::TwoUnif ( a1, b1, p1, a2, b2, p2 ) => {
+
+                let u: f64 = rng.r#gen();
+                if u < *p1 {
+                Uniform::new(a1, b1).sample(rng)
+                } else {
+                Uniform::new(a2, b2).sample(rng)
+                }
+            }
+            Dist::TwoTruncatedN ( u1, v1, p1, u2, v2, p2 ) => {
+
+                let u: f64 = rng.r#gen();
+                if u < *p1 {
+                    Dist::TruncatedN(*u1, *v1).sample(rng)
+                } else {
+                    Dist::TruncatedN(*u2, *v2).sample(rng)
+                }
+            }
+
         }
     }
     fn mean(&self) -> f64 {
@@ -240,6 +274,14 @@ impl Dist {
                 let phi = |t: f64| (-(t*t)/2.0).exp() / (std::f64::consts::TAU).sqrt();
                 let mu_z = (phi(alpha) - phi(beta)) / z;
                 m + sigma * mu_z
+            }
+            Dist::TwoUnif  (a1, b1, p1, a2, b2, p2 ) => {
+                p1 * (a1 + b1) * 0.5 + p2 * (a2 + b2) * 0.5
+            }
+            Dist::TwoTruncatedN ( u1, v1, p1, u2, v2, p2 ) => {
+                let m1 = Dist::TruncatedN(*u1, *v1).mean();
+                let m2 = Dist::TruncatedN(*u2, *v2).mean();
+                *p1 * m1 + *p2 * m2
             }
         }
     }
@@ -310,6 +352,16 @@ impl Dist {
                 let varx = sigma * sigma * var_z;
 
                 varx + ex * ex
+            }
+            Dist::TwoUnif ( a1, b1, p1, a2, b2, p2 ) => {
+                let e2_1 = (b1.powi(3) - a1.powi(3)) / (3.0 * (b1 - a1));
+                let e2_2 = (b2.powi(3) - a2.powi(3)) / (3.0 * (b2 - a2));
+                p1 * e2_1 + p2 * e2_2
+            }
+            Dist::TwoTruncatedN ( u1, v1, p1, u2, v2, p2 ) => {
+                let e2_1 = Dist::TruncatedN(*u1, *v1).meansquare();
+                let e2_2 = Dist::TruncatedN(*u2, *v2).meansquare();
+                *p1 * e2_1 + *p2 * e2_2
             }
         }
     }
@@ -786,7 +838,7 @@ fn k_to_partitions_mults(k: usize) -> Vec<scored_vec_mult> {
 fn vec_mult_to_work(
     job_vec: &Vec<Job>,
     k: usize,
-    sets: Vec<scored_vec_mult>,
+    sets: &Vec<scored_vec_mult>,
     backfill: bool,
 ) -> Vec<usize> {
     //smallest bucket is 1
@@ -1005,7 +1057,7 @@ fn length_to_k(p: f64, length: usize) -> usize {
     }
 }
 
-fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64) -> Vec<usize> {
+fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64, cache: &mut Option<Vec<scored_vec_mult>>) -> Vec<usize> {
     // use various policies to get a vector of indices of jobs in the queue that can be worked on.
     let l_lim = 0.0;
     let u_lim = num_servers as f64;
@@ -1037,23 +1089,27 @@ fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64
             p2_buckets(vec, length_to_k(pow, vec.len()), true)
         }
         Policy::IPB(k) => {
-            let set_mul_vec = k_to_partitions_mults(k);
-            vec_mult_to_work(vec, k, set_mul_vec, false)
+            if cache.is_none() {
+                *cache = Some(k_to_partitions_mults(k));
+            }
+
+            //let set_mul_vec = k_to_partitions_mults(k);
+            vec_mult_to_work(vec, k, cache.as_ref().expect("Cache is filled"), false)
         }
         Policy::IPBB(k) => {
             let set_mul_vec = k_to_partitions_mults(k);
-            vec_mult_to_work(vec, k, set_mul_vec, true)
+            vec_mult_to_work(vec, k, &set_mul_vec, true)
         }
         Policy::AdaptiveIPB(p) => vec_mult_to_work(
             vec,
             length_to_k(p, vec.len()),
-            k_to_partitions_mults(length_to_k(p, vec.len())),
+            &k_to_partitions_mults(length_to_k(p, vec.len())),
             false,
         ),
         Policy::AdaptiveIPBB(p) => vec_mult_to_work(
             vec,
             length_to_k(p, vec.len()),
-            k_to_partitions_mults(length_to_k(p, vec.len())),
+            &k_to_partitions_mults(length_to_k(p, vec.len())),
             true,
         ),
     }
@@ -1077,6 +1133,7 @@ fn simulate(
     let arrival_dist = Exp::new(arr_lambda).unwrap();
     let mut total_work = 0.0;
     let mut num_arrivals = 0;
+    let mut cache = None;
 
     // predict what outcome should be (if fcfs):
     if DEBUG {
@@ -1114,7 +1171,7 @@ fn simulate(
         // determine how many jobs need to get worked on in the sorted queue.
         //let num_workable = qscan(&queue, num_servers);
         //
-        let mut index_workable = queue_indices(&queue, num_servers, policy, arr_lambda);
+        let mut index_workable = queue_indices(&queue, num_servers, policy, arr_lambda, &mut cache);
         index_workable.sort();
 
         if DEBUG {
