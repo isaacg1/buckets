@@ -8,7 +8,7 @@ use rand_distr::Uniform;
 use smallvec::{SmallVec, smallvec};
 use std::f64::INFINITY;
 use statrs::distribution::{Normal as StatNormal, ContinuousCDF};
-use rand::seq::SliceRandom;
+//use rand::seq::SliceRandom;
 
 //hy: time count
 use std::time::Instant;
@@ -168,7 +168,7 @@ fn main() {
                         lambda,
                         result.mean_response,
                     );
-                    if (result.mean_response > 1000.00 as f64) {
+                    if result.mean_response > 1000.00 as f64 {
                         println!(
                             "{}; OVERFLOW (MRT>1000); arrivals={};",
                             lambda, result.num_arrivals,
@@ -623,7 +623,7 @@ impl Policy {
             | Policy::AdaptiveIPBB(_)
             | Policy::IPB(_)
             | Policy::IPBB(_) => job.arrival_time,
-            | Policy:: BPTB(_) |Policy:: BPTB_LSF(_) => job.service_req, //hy:Borg ???
+            Policy:: BPTB_LSF(_) => job.service_req, //hy:Borg ???
         }
     }
 }
