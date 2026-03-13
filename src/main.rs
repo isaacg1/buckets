@@ -6,19 +6,17 @@ use rand_distr::Exp;
 use rand_distr::Gamma;
 use rand_distr::Uniform;
 use smallvec::{SmallVec, smallvec};
-use std::f64::INFINITY;
+use statrs::distribution::{ContinuousCDF, Normal as StatNormal};
 use std::collections::HashSet;
-use statrs::distribution::{Normal as StatNormal, ContinuousCDF};
+use std::f64::INFINITY;
 //use rand::seq::SliceRandom;
 
 //hy: time count
 use std::time::Instant;
 
-
 // hy: Read csv files
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-
 
 const EPSILON: f64 = 1e-8;
 const DEBUG: bool = false;
@@ -32,7 +30,7 @@ fn main() {
     //let dist = Dist::Uniform(0.01,1.0);
     let dist = Dist::Expon(1.0);
     let num_servers = 1;
-    let num_jobs = 1_000_000;
+    let num_jobs = 100_000;
     // let num_jobs = 1_000_000;
     // let num_jobs = 7010740;
     // let num_jobs = 19366;
@@ -42,19 +40,19 @@ fn main() {
     // let job_req_dist = Dist::Constant(0.45);
     // let job_req_dist = Dist::Uniform(0.0, 1.0);
     // let job_req_dist = Dist::MUnif(
-    //     [0.2, 0.8],   
-    //     [0.8, 0.2],   
+    //     [0.2, 0.8],
+    //     [0.8, 0.2],
     // );
     // let job_req_dist = Dist::Triangular(1.0);
     // let job_req_dist = Dist::BExp(0.5);
     // let job_req_dist = Dist::BLomax(2.0, 1.0);
 
     // let job_req_dist = Dist:: TruncatedN(0.5,1.0);
-    let job_req_dist = Dist:: TruncatedN(0.375, 0.083*0.083);
+    //let job_req_dist = Dist::TruncatedN(0.29, 0.04 * 0.04);
     // let job_req_dist = Dist:: TwoUnif( 0.45, 0.5, 0.4, 0.28, 0.33, 0.6 );
     // let job_req_dist = Dist:: TwoUnif( 0.22, 0.25, 0.5714, 0.30, 0.33, 0.4286 );
     // let job_req_dist = Dist::TwoTruncatedN(0.24, 0.005*0.005,0.5714, 0.32, 0.005*0.005, 0.4286);
-    // let job_req_dist = Dist::TwoTruncatedN(0.48, 0.005*0.005,0.4, 0.32, 0.005*0.005, 0.6);
+    let job_req_dist = Dist::TwoTruncatedN(0.47, 0.005*0.005,0.4, 0.31, 0.005*0.005, 0.6);
     // let job_req_dist = Dist::TwoTruncatedN(0.29, 0.083*0.083,0.7, 0.95, 0.05*0.05, 0.3);
 
     // let policy = Policy::AdaptiveBPTB(2.0);
@@ -79,157 +77,148 @@ fn main() {
     //                     Policy::FCFS, Policy::FCFSB,Policy::MSF,Policy::AdaptiveBPTB(1.5),Policy::AdaptiveBPTB(2.0)];
 
     let policies = vec![
-                        // Policy::DB(8),
-                        // Policy::DB(16),
-                        // Policy::DB(64),
-                        // Policy::DBB(8),
-                        // Policy::DBB(16),
-                        // Policy::DBB(64),
-                        // Policy::FCFS, // 2.1
-                        // Policy::FCFSB, // 2.3
-                        // Policy::MSF, // 2.3
-                        // Policy::BPT(8),
-                        // Policy::BPT(64),
-                        //Policy::BPTB(64),
-                        // Policy::BPTB(1024),
-                        // Policy:: IPB(8),
-                        // Policy:: IPB(16),
-                         Policy:: IPB(24),
-                        // Policy:: IPBB(6),
-                        // Policy:: IPBB(18),
-                        // Policy:: IPBB(8),
-                        // Policy:: IPBB(16),
-                        // Policy::LSF,
-                        // Policy::AdaptiveBPTB(1.5),
+        // Policy::DB(8),
+        // Policy::DB(16),
+        // Policy::DB(64),
+        // Policy::DBB(8),
+        // Policy::DBB(16),
+        // Policy::DBB(64),
+        //Policy::FCFS, // 2.1
+        Policy::FCFSB, // 2.3
+        // Policy::MSF, // 2.3
+        // Policy::BPT(8),
+        //Policy::BPT(32),
+        Policy::BPTB(32),
+        // Policy::BPTB(1024),
+        // Policy:: IPB(8),
+        // Policy:: IPB(16),
+        //Policy::XIPB(32),
+        Policy::XIPBB(32),
+        //Policy::XIPB(6),
+        // Policy:: IPBB(6),
+        // Policy:: IPBB(18),
+        // Policy:: IPBB(8),
+        // Policy:: IPBB(16),
+        // Policy::LSF,
+        // Policy::AdaptiveBPTB(1.5),
     ];
 
     // let main_req_trace = read_one_col_csv("Memory_Borg.csv");
     // let main_req_trace: Vec<f64> = main_req_trace[..30_000].to_vec();
     // for &policy in &policies {
-        // for seed in 0..10 {
-        //let mut rng = StdRng::seed_from_u64(seed);
-        //let mut req_trace = main_req_trace.clone();
-        //req_trace.shuffle(&mut rng);
-        for &policy in &policies {
+    // for seed in 0..10 {
+    //let mut rng = StdRng::seed_from_u64(seed);
+    //let mut req_trace = main_req_trace.clone();
+    //req_trace.shuffle(&mut rng);
+    for &policy in &policies {
+        // HY: If we do SIMPLE CONTINUOUS job req dist.
+        println!(
+            "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
+            policy, dist, job_req_dist, num_jobs, seed
+        );
+
+        // HY: If we use real-world data
+
+        // println!(
+        //     "Policy : {:?}, Duration: {:?}, Seed: {}",
+        //     policy, dist, seed
+        // );
+        println!(" Duration: {:?}, Seed: {}", dist, seed);
+        let mut lambdas: Vec<f64> = Vec::new();
+
+        // for i in (13..=14).rev() {
+        for i in 20..=30 {
+            //64 {
+            // lambdas.push(i as f64 / 10.0);
+            lambdas.push(i as f64 / 10.0);
+        }
+        // for i in 291..=299 {
+        //     lambdas.push(i as f64 / 100.0);
+        // }
+
+        for lambda in lambdas {
+            // for lam_base in 181..190{
+            // for lam_base in 301..310{//} 1..20 {
+
+            // let lambda = lam_base as f64 /100.0;
+            // let lambda = lam_base as f64 * 10.0;
             // HY: If we do SIMPLE CONTINUOUS job req dist.
-            println!(
-                "Policy : {:?}, Duration: {:?}, Requirement: {:?}, Jobs per data point: {}, Seed: {}",
-                policy, dist, job_req_dist, num_jobs, seed
+            let start = Instant::now();
+            let result = simulateInLoop(
+                policy,
+                num_servers,
+                num_jobs,
+                dist,
+                lambda,
+                seed,
+                job_req_dist,
             );
-
-            // HY: If we use real-world data
-
-            // println!(
-            //     "Policy : {:?}, Duration: {:?}, Seed: {}",
-            //     policy, dist, seed
-            // );
-            println!(
-                " Duration: {:?}, Seed: {}",
-                dist, seed
-            );
-            let mut lambdas: Vec<f64> = Vec::new();
-
-            // for i in (13..=14).rev() {
-            for i in 24..=27{//64 {
-                // lambdas.push(i as f64 / 10.0);
-                lambdas.push(i as f64 / 10.0);
-            }
-            // for i in 291..=299 {
-            //     lambdas.push(i as f64 / 100.0);
-            // }
-
-            for lambda in lambdas {
-                // for lam_base in 181..190{
-                // for lam_base in 301..310{//} 1..20 {
-
-                // let lambda = lam_base as f64 /100.0;
-                // let lambda = lam_base as f64 * 10.0;
-                // HY: If we do SIMPLE CONTINUOUS job req dist.
-                let start = Instant::now();
-                let result = simulateInLoop(
-                    policy,
-                    num_servers,
-                    num_jobs,
-                    dist,
-                    lambda,
-                    seed,
-                    job_req_dist,
-                );
-                //
-                // let elapsed = start.elapsed();
-                if result.overflow {
+            //
+            // let elapsed = start.elapsed();
+            if result.overflow {
+                println!("{}; OVERFLOW; arrivals={};", lambda, result.num_arrivals,);
+                break;
+            } else {
+                println!("{}; {};", lambda, result.mean_response,);
+                if result.mean_response > 1000.00 as f64 {
                     println!(
-                        "{}; OVERFLOW; arrivals={};",
+                        "{}; OVERFLOW (MRT>1000); arrivals={};",
                         lambda, result.num_arrivals,
                     );
                     break;
-                } else {
-                    println!(
-                        "{}; {};",
-                        lambda,
-                        result.mean_response,
-                    );
-                    if result.mean_response > 1000.00 as f64 {
-                        println!(
-                            "{}; OVERFLOW (MRT>1000); arrivals={};",
-                            lambda, result.num_arrivals,
-                        );
-                        break;
-                    }
-
-                    // HY: Use this code for simple distribution but not Borg traces
-                    // if (result.mean_response > 1000.00 as f64) {
-                    //     // let mut lambdas2: Vec<f64> = Vec::new();
-                    //     // let mut lambdaStart = (lambda * 10) as i32;
-                    //     // for j in lambdaStart+1 as i32..=lambdaStart+9 {
-                    //     //     // lambdas.push(i as f64 / 10.0);
-                    //     //     lambdas2.push(j as f64 / 100.0);
-                    //     // }
-                    //     break;
-                    // }
-
-                    // println!(
-                    //     "{}; {};",
-                    //     lambda,
-                    //     result.mean_response
-                    // );
                 }
 
-
-                // HY: If we use real-world data
-
-                // let start = Instant::now();
-                // let result = simulateInLoop_traces_revised(
-                //     //let check = simulateInLoop_traces(
-                //     num_servers,
-                //     lambda,
-                //     seed,
-                //     &main_req_trace, // HY: some array we can read from traces of, for example, Google Borg memory requirement
-                // );
-                //
-                // let elapsed = start.elapsed();
-                // if result.overflow {
-                //     println!(
-                //         "{}; OVERFLOW; arrivals={}; time={:?}",
-                //         lambda, result.num_arrivals, elapsed
-                //     );
+                // HY: Use this code for simple distribution but not Borg traces
+                // if (result.mean_response > 1000.00 as f64) {
+                //     // let mut lambdas2: Vec<f64> = Vec::new();
+                //     // let mut lambdaStart = (lambda * 10) as i32;
+                //     // for j in lambdaStart+1 as i32..=lambdaStart+9 {
+                //     //     // lambdas.push(i as f64 / 10.0);
+                //     //     lambdas2.push(j as f64 / 100.0);
+                //     // }
                 //     break;
-                // } else {
-                //     // println!(
-                //     //     "{}; {};{:?}",
-                //     //     lambda,
-                //     //     result.mean_response,
-                //     //     elapsed
-                //     // );
-                //     println!(
-                //         "{}; {};",
-                //         lambda,
-                //         result.mean_response
-                //     );
                 // }
-            }
-    //    }
 
+                // println!(
+                //     "{}; {};",
+                //     lambda,
+                //     result.mean_response
+                // );
+            }
+
+            // HY: If we use real-world data
+
+            // let start = Instant::now();
+            // let result = simulateInLoop_traces_revised(
+            //     //let check = simulateInLoop_traces(
+            //     num_servers,
+            //     lambda,
+            //     seed,
+            //     &main_req_trace, // HY: some array we can read from traces of, for example, Google Borg memory requirement
+            // );
+            //
+            // let elapsed = start.elapsed();
+            // if result.overflow {
+            //     println!(
+            //         "{}; OVERFLOW; arrivals={}; time={:?}",
+            //         lambda, result.num_arrivals, elapsed
+            //     );
+            //     break;
+            // } else {
+            //     // println!(
+            //     //     "{}; {};{:?}",
+            //     //     lambda,
+            //     //     result.mean_response,
+            //     //     elapsed
+            //     // );
+            //     println!(
+            //         "{}; {};",
+            //         lambda,
+            //         result.mean_response
+            //     );
+            // }
+        }
+        //    }
 
         // for lam_base in 181..190{
         //     // for lam_base in 301..310{//} 1..20 {
@@ -250,7 +239,7 @@ fn main() {
         //     // println!("{}; {};", lambda, check);
         //     println!("{}; {}; {:?}", lambda, check, elapsed);
         // }
-        }
+    }
 }
 
 fn read_one_col_csv(path: &str) -> Vec<f64> {
@@ -289,11 +278,11 @@ enum Dist {
     BLomax(f64, f64), // hy: Bounded Lomax with shape parameter \alpha and scaling parameter \lambda
     MUnif([f64; 2], [f64; 2]), // hy: mixed uniform with two breakpoints
     //MUnif(Vec<f64>, Vec<f64>), // hy: mixed uniform with decreasing dexsity
-    Triangular(f64), //hy: triangular distribution with right endpoint u
+    Triangular(f64),      //hy: triangular distribution with right endpoint u
     BExp(f64), // hy: Bounded exponential distribution: exponential truncated to [0,1], density \prop e^(−\lambda t)
     TruncatedN(f64, f64), // hy: Bounded normal distribution: normal distribution truncated to [0,1]
-    TwoUnif (f64, f64, f64, f64, f64, f64,),
-    TwoTruncatedN (f64,  f64, f64,  f64,  f64,  f64),
+    TwoUnif(f64, f64, f64, f64, f64, f64),
+    TwoTruncatedN(f64, f64, f64, f64, f64, f64),
 }
 
 impl Dist {
@@ -384,29 +373,27 @@ impl Dist {
                 let stdn = StatNormal::new(0.0, 1.0).unwrap();
 
                 let alpha = (0.0 - m) / sigma;
-                let beta  = (1.0 - m) / sigma;
+                let beta = (1.0 - m) / sigma;
 
                 let fa = stdn.cdf(alpha);
                 let fb = stdn.cdf(beta);
-                let z  = (fb - fa).max(1e-16); 
+                let z = (fb - fa).max(1e-16);
                 let u: f64 = rng.r#gen();
-                let y = stdn.inverse_cdf(fa + u * z);    
-                let x = m + sigma * y;                  
+                let y = stdn.inverse_cdf(fa + u * z);
+                let x = m + sigma * y;
 
                 x
             }
 
-            Dist::TwoUnif ( a1, b1, p1, a2, b2, p2 ) => {
-
+            Dist::TwoUnif(a1, b1, p1, a2, b2, p2) => {
                 let u: f64 = rng.r#gen();
                 if u < *p1 {
-                Uniform::new(a1, b1).sample(rng)
+                    Uniform::new(a1, b1).sample(rng)
                 } else {
-                Uniform::new(a2, b2).sample(rng)
+                    Uniform::new(a2, b2).sample(rng)
                 }
             }
-            Dist::TwoTruncatedN ( u1, v1, p1, u2, v2, p2 ) => {
-
+            Dist::TwoTruncatedN(u1, v1, p1, u2, v2, p2) => {
                 let u: f64 = rng.r#gen();
                 if u < *p1 {
                     Dist::TruncatedN(*u1, *v1).sample(rng)
@@ -414,7 +401,6 @@ impl Dist {
                     Dist::TruncatedN(*u2, *v2).sample(rng)
                 }
             }
-
         }
     }
     fn mean(&self) -> f64 {
@@ -462,20 +448,18 @@ impl Dist {
                 let stdn = StatNormal::new(0.0, 1.0).unwrap();
 
                 let alpha = (0.0 - m) / sigma;
-                let beta  = (1.0 - m) / sigma;
+                let beta = (1.0 - m) / sigma;
 
                 let fa = stdn.cdf(alpha);
                 let fb = stdn.cdf(beta);
-                let z  = (fb - fa).max(1e-16);
+                let z = (fb - fa).max(1e-16);
 
-                let phi = |t: f64| (-(t*t)/2.0).exp() / (std::f64::consts::TAU).sqrt();
+                let phi = |t: f64| (-(t * t) / 2.0).exp() / (std::f64::consts::TAU).sqrt();
                 let mu_z = (phi(alpha) - phi(beta)) / z;
                 m + sigma * mu_z
             }
-            Dist::TwoUnif  (a1, b1, p1, a2, b2, p2 ) => {
-                p1 * (a1 + b1) * 0.5 + p2 * (a2 + b2) * 0.5
-            }
-            Dist::TwoTruncatedN ( u1, v1, p1, u2, v2, p2 ) => {
+            Dist::TwoUnif(a1, b1, p1, a2, b2, p2) => p1 * (a1 + b1) * 0.5 + p2 * (a2 + b2) * 0.5,
+            Dist::TwoTruncatedN(u1, v1, p1, u2, v2, p2) => {
                 let m1 = Dist::TruncatedN(*u1, *v1).mean();
                 let m2 = Dist::TruncatedN(*u2, *v2).mean();
                 *p1 * m1 + *p2 * m2
@@ -506,11 +490,9 @@ impl Dist {
 
                 let bl = 1.0 / (2.0 - alpha) - 2.0 / (1.0 - alpha) - 1.0 / alpha;
 
-
                 alpha * lambda * lambda * (bu - bl) / c
             }
             Dist::MUnif(v, p) => {
-
                 let d = v.len();
                 p.iter()
                     .enumerate()
@@ -535,27 +517,27 @@ impl Dist {
                 let stdn = StatNormal::new(0.0, 1.0).unwrap();
 
                 let alpha = (0.0 - m) / sigma;
-                let beta  = (1.0 - m) / sigma;
+                let beta = (1.0 - m) / sigma;
 
                 let fa = stdn.cdf(alpha);
                 let fb = stdn.cdf(beta);
-                let z  = (fb - fa).max(1e-16);
+                let z = (fb - fa).max(1e-16);
 
-                let phi = |t: f64| (-(t*t)/2.0).exp() / (std::f64::consts::TAU).sqrt();
-                let mu_z  = (phi(alpha) - phi(beta)) / z;
+                let phi = |t: f64| (-(t * t) / 2.0).exp() / (std::f64::consts::TAU).sqrt();
+                let mu_z = (phi(alpha) - phi(beta)) / z;
                 let var_z = 1.0 + (alpha * phi(alpha) - beta * phi(beta)) / z - mu_z * mu_z;
 
-                let ex   = m + sigma * mu_z;
+                let ex = m + sigma * mu_z;
                 let varx = sigma * sigma * var_z;
 
                 varx + ex * ex
             }
-            Dist::TwoUnif ( a1, b1, p1, a2, b2, p2 ) => {
+            Dist::TwoUnif(a1, b1, p1, a2, b2, p2) => {
                 let e2_1 = (b1.powi(3) - a1.powi(3)) / (3.0 * (b1 - a1));
                 let e2_2 = (b2.powi(3) - a2.powi(3)) / (3.0 * (b2 - a2));
                 p1 * e2_1 + p2 * e2_2
             }
-            Dist::TwoTruncatedN ( u1, v1, p1, u2, v2, p2 ) => {
+            Dist::TwoTruncatedN(u1, v1, p1, u2, v2, p2) => {
                 let e2_1 = Dist::TruncatedN(*u1, *v1).meansquare();
                 let e2_2 = Dist::TruncatedN(*u2, *v2).meansquare();
                 *p1 * e2_1 + *p2 * e2_2
@@ -567,26 +549,26 @@ impl Dist {
 #[derive(Debug, Clone, Copy)]
 enum Policy {
     // Baseline policies
-    FCFS,                                 // First-Come First-Served
-    PLCFS,                                // Preemptive Last-Come First-Served
-    SRPT,                                 // Shortest Remaining Processing Time
-    FCFSB,                                // First-Come First-Served, preemptive backfilling
-    SRPTB,                     // Shortest Remaining Processing Time, preemptive backfilling
-    PLCFSB,                    // Preemptive Last-Come First-Served
-    LSF,                       // Preemptive Least Servers First
-    LSFB,                      // Preemptive Least Servers First, preemptive backfilling
-    MSF,                       // Preemptive Most Servers First
-    MSFB,                      // Preemptive Most Servers First, preemptive backfilling
-    SRA,                       // Smallest remaining area
-    SRAB,                      // Smallest remaining area, preemptive backfilling
-    LRA,                       // Largest remaining area
-    LRAB,                      // Largest remaining area, preemptive backfilling
-    DB(usize),                 // Double bucket, explicit K
-    DBB(usize),                // Double bucket, explicit K, preemptive backfilling
-    DBE,                       // Double bucket, K based on lambda
-    DBEB,                      // Double bucket, K based on lambda, preemptive backfilling
-    BPT(usize),                // Bucket powers of 2, explicit K
-    BPTB(usize),               // BPT w/ backfilling
+    FCFS,        // First-Come First-Served
+    PLCFS,       // Preemptive Last-Come First-Served
+    SRPT,        // Shortest Remaining Processing Time
+    FCFSB,       // First-Come First-Served, preemptive backfilling
+    SRPTB,       // Shortest Remaining Processing Time, preemptive backfilling
+    PLCFSB,      // Preemptive Last-Come First-Served
+    LSF,         // Preemptive Least Servers First
+    LSFB,        // Preemptive Least Servers First, preemptive backfilling
+    MSF,         // Preemptive Most Servers First
+    MSFB,        // Preemptive Most Servers First, preemptive backfilling
+    SRA,         // Smallest remaining area
+    SRAB,        // Smallest remaining area, preemptive backfilling
+    LRA,         // Largest remaining area
+    LRAB,        // Largest remaining area, preemptive backfilling
+    DB(usize),   // Double bucket, explicit K
+    DBB(usize),  // Double bucket, explicit K, preemptive backfilling
+    DBE,         // Double bucket, K based on lambda
+    DBEB,        // Double bucket, K based on lambda, preemptive backfilling
+    BPT(usize),  // Bucket powers of 2, explicit K
+    BPTB(usize), // BPT w/ backfilling
     AdaptiveDB(f64),
     AdaptiveDBB(f64),
     AdaptiveBPT(f64), // Double bucket, K based on queue length raised to 1/parameter
@@ -595,7 +577,9 @@ enum Policy {
     AdaptiveIPBB(f64), // Double bucket, K based on queue length raised to 1/parameter
     IPB(usize),       // Integer partitions buckets, explicit K
     IPBB(usize),      // Integer partitions buckets, explicit K, Backfilling
-    BPTB_LSF(usize), // 2B KEMW LSF
+    XIPB(usize),      // Integer partitions buckets, explicit K
+    XIPBB(usize),     // Integer partitions buckets, explicit K, Backfilling
+    BPTB_LSF(usize),  // 2B KEMW LSF
 }
 
 impl Policy {
@@ -623,8 +607,10 @@ impl Policy {
             | Policy::AdaptiveIPB(_)
             | Policy::AdaptiveIPBB(_)
             | Policy::IPB(_)
-            | Policy::IPBB(_) => job.arrival_time,
-            Policy:: BPTB_LSF(_) => job.service_req, //hy:Borg ???
+            | Policy::XIPB(_)
+            | Policy::IPBB(_)
+            | Policy::XIPBB(_) => job.arrival_time,
+            Policy::BPTB_LSF(_) => job.service_req, //hy:Borg ???
         }
     }
 }
@@ -769,7 +755,7 @@ fn eval_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64, backfill: bool
     let mut temp_new = 0.0;
     let mut sitting_best = 0.0;
 
-    if  k % 2 == 1 {
+    if k % 2 == 1 {
         for jj in 0..((bucket_scores.len() - 1) / 2) {
             temp_new = bucket_scores[jj] + bucket_scores[k - jj - 2];
 
@@ -778,9 +764,8 @@ fn eval_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64, backfill: bool
                 target = jj; // assign target var
             }
         }
-    }
-    else {
-        for jj in 0..(bucket_scores.len()  / 2) {
+    } else {
+        for jj in 0..(bucket_scores.len() / 2) {
             temp_new = bucket_scores[jj] + bucket_scores[k - jj - 2];
 
             if temp_new > sitting_best + EPSILON {
@@ -789,7 +774,6 @@ fn eval_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64, backfill: bool
             }
         }
     }
-
 
     // check the last bucket
     let mut last = false;
@@ -806,7 +790,7 @@ fn eval_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64, backfill: bool
     let mut ret_indices: Vec<usize> = vec![];
 
     // fetch the indices of the jobs corresponding to the winning bucket
-    if k % 2 == 0{
+    if k % 2 == 0 {
         if target == k / 2 - 1 {
             for kk in 0..vec.len() {
                 if bucket_numbers[kk] == target {
@@ -836,8 +820,7 @@ fn eval_buckets(vec: &Vec<Job>, k: usize, upper: f64, lower: f64, backfill: bool
                 }
             }
         }
-    }
-    else {
+    } else {
         for kk in 0..vec.len() {
             if bucket_numbers[kk] == target {
                 ret_indices.push(kk);
@@ -1221,7 +1204,6 @@ fn assign_buckets_exp(vec: &Vec<ExpJob>, k: usize, upper: f64, lower: f64) -> Ve
     bucket_numbers
 }
 
-
 #[derive(Debug, Clone)]
 struct score_ip {
     partition: Vec<usize>,
@@ -1235,20 +1217,20 @@ struct scored_vec_mult {
     score: usize,
 }
 
-fn k_to_partitions_mults(k: usize) -> Vec<scored_vec_mult> {
+fn k_to_partitions_mults(k: usize, extreme: bool) -> Vec<scored_vec_mult> {
     // takes a k value and returns a vector of integer partitions with multiplicities of each
     // number listed and no duplicates (hopefully)
 
     let mut ipar = Partitions::new(k); //hy: for k = 4, [[4], [3,1], [2,2], [2,1,1], [1,1,1,1]]
     let mut to_remove = HashSet::new();
-    if k % 2 == 0 {
-        let mut half_ipar = Partitions::new(k/2);
+    if extreme && k % 2 == 0 {
+        let mut half_ipar = Partitions::new(k / 2);
         let mut half_ipar_vec: Vec<Vec<usize>> = vec![];
         while let Some(part) = half_ipar.next() {
             half_ipar_vec.push(part.to_vec());
         }
         for i in 0..half_ipar_vec.len() {
-            for j in i+1..half_ipar_vec.len() {
+            for j in i + 1..half_ipar_vec.len() {
                 let mut new = vec![];
                 new.extend(&half_ipar_vec[i]);
                 new.extend(&half_ipar_vec[j]);
@@ -1257,13 +1239,12 @@ fn k_to_partitions_mults(k: usize) -> Vec<scored_vec_mult> {
             }
         }
     }
-    println!("to_remove: {}", to_remove.len());
     let mut partition_vector: Vec<scored_vec_mult> = vec![];
 
     while let Some(part) = ipar.next() {
         let current_partition: Vec<usize> = part.to_vec();
         if to_remove.contains(&current_partition) {
-            continue
+            continue;
         }
         let mut no_duplicates: Vec<usize> = vec![];
         let mut mults: Vec<usize> = vec![];
@@ -1287,8 +1268,6 @@ fn k_to_partitions_mults(k: usize) -> Vec<scored_vec_mult> {
         };
         partition_vector.push(current_set);
     }
-    println!("{}", partition_vector.len());
-    assert!(false);
     partition_vector
 }
 
@@ -1306,7 +1285,7 @@ fn vec_mult_to_work(
     if DEBUG {
         println!("Bucket numbers: {:?}", bucket_numbers)
     }
-    let mut score_vec: Vec<scored_vec_mult> = sets.clone(); // hy: copy a new vector identical to the original one  
+    //let mut score_vec: Vec<scored_vec_mult> = sets.clone(); // hy: copy a new vector identical to the original one
 
     // bucket_counts is the quantity of jobs in each bucket
 
@@ -1315,11 +1294,13 @@ fn vec_mult_to_work(
         bucket_counts[num - 1] += 1
     }
 
-    for qq in 0..score_vec.len() {
+    let mut best_score_index = 0;
+    let mut best_score = 0;
+    for qq in 0..sets.len() {
         //hy: set is some policy, e.g., vect = [1,3], mults = [5,1] means solving five 1-sized jobs and one 3-sized job together
-        let set = score_vec[qq].clone();
-        let current_partition: Vec<usize> = set.vect; //Heyuan: it is no_duplicates`
-        let mul_vec = set.multiplicities;
+        let set = &sets[qq];
+        let current_partition: &Vec<usize> = &set.vect; //Heyuan: it is no_duplicates`
+        let mul_vec = &set.multiplicities;
         let mut current_score: usize = 0;
         for ii in 0..current_partition.len() {
             let multiplicity = mul_vec[ii];
@@ -1330,18 +1311,25 @@ fn vec_mult_to_work(
             // Heyuan: By summing them up we obtain <q, M>, where this M is multiplicity.min(count), and q is count
             // Q1: So should the code be current_score += multiplicity.min(count)*count
         }
-        score_vec[qq].score = current_score;
+        if current_score >= best_score {
+            best_score = current_score;
+            best_score_index = qq;
+        }
+        //score_vec[qq].score = current_score;
     }
 
-    let score_vec_for_eval = score_vec.clone();
+    //let score_vec_for_eval = score_vec.clone();
 
+    /*
     let top_scorer: scored_vec_mult = score_vec_for_eval
         .iter()
         .max_by_key(|p: &&scored_vec_mult| p.score)
         .unwrap()
         .clone();
-    let target_buckets = top_scorer.vect;
-    let target_reps = top_scorer.multiplicities;
+        */
+    let top_scorer = &sets[best_score_index];
+    let target_buckets = &top_scorer.vect;
+    let target_reps = &top_scorer.multiplicities;
     assert!(target_buckets.len() == target_reps.len());
 
     if DEBUG {
@@ -1375,7 +1363,6 @@ fn vec_mult_to_work(
             .sum();
         found_indices = backfill_hogged(job_vec, taken_resource, found_indices);
     }
-
 
     found_indices
 }
@@ -1520,16 +1507,21 @@ fn length_to_k(p: f64, length: usize) -> usize {
         // Round up to the nearest integer
         let n = root.ceil() as usize;
         // Next power of two \geq n
-        if n.next_power_of_two() <2 {
+        if n.next_power_of_two() < 2 {
             2
-        }
-        else {
+        } else {
             n.next_power_of_two()
         }
     }
 }
 
-fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64, cache: &mut Option<Vec<scored_vec_mult>>) -> Vec<usize> {
+fn queue_indices(
+    vec: &Vec<Job>,
+    num_servers: usize,
+    policy: Policy,
+    lambda: f64,
+    cache: &mut Option<Vec<scored_vec_mult>>,
+) -> Vec<usize> {
     // use various policies to get a vector of indices of jobs in the queue that can be worked on.
     let l_lim = 0.0;
     let u_lim = num_servers as f64;
@@ -1556,63 +1548,70 @@ fn queue_indices(vec: &Vec<Job>, num_servers: usize, policy: Policy, lambda: f64
         Policy::BPTB(k) => p2_buckets(vec, k, true),
         Policy::BPTB_LSF(k) => p2_buckets(vec, k, true), // hy:Borg ??????
         Policy::AdaptiveDB(pow) => {
-            eval_buckets(vec, length_to_k(pow, vec.len()), u_lim, l_lim,false)
+            eval_buckets(vec, length_to_k(pow, vec.len()), u_lim, l_lim, false)
         }
         Policy::AdaptiveDBB(pow) => {
-            eval_buckets(vec, length_to_k(pow, vec.len()), u_lim, l_lim,true)
+            eval_buckets(vec, length_to_k(pow, vec.len()), u_lim, l_lim, true)
         }
-        Policy::AdaptiveBPT(pow) => {
-            p2_buckets(vec, length_to_k(pow, vec.len()), false)
-        }
-        Policy::AdaptiveBPTB(pow) => {
-            p2_buckets(vec, length_to_k(pow, vec.len()), true)
-        }
+        Policy::AdaptiveBPT(pow) => p2_buckets(vec, length_to_k(pow, vec.len()), false),
+        Policy::AdaptiveBPTB(pow) => p2_buckets(vec, length_to_k(pow, vec.len()), true),
         Policy::IPB(k) => {
             if cache.is_none() {
-                *cache = Some(k_to_partitions_mults(k));
+                *cache = Some(k_to_partitions_mults(k, false));
             }
 
-            //let set_mul_vec = k_to_partitions_mults(k);
             vec_mult_to_work(vec, k, cache.as_ref().expect("Cache is filled"), false)
         }
         Policy::IPBB(k) => {
-            let set_mul_vec = k_to_partitions_mults(k);
-            vec_mult_to_work(vec, k, &set_mul_vec, true)
+            if cache.is_none() {
+                *cache = Some(k_to_partitions_mults(k, false));
+            }
+
+            vec_mult_to_work(vec, k, cache.as_ref().expect("Cache is filled"), true)
+        }
+        Policy::XIPB(k) => {
+            if cache.is_none() {
+                *cache = Some(k_to_partitions_mults(k, true));
+            }
+
+            vec_mult_to_work(vec, k, cache.as_ref().expect("Cache is filled"), false)
+        }
+        Policy::XIPBB(k) => {
+            if cache.is_none() {
+                *cache = Some(k_to_partitions_mults(k, true));
+            }
+
+            vec_mult_to_work(vec, k, cache.as_ref().expect("Cache is filled"), true)
         }
         Policy::AdaptiveIPB(p) => vec_mult_to_work(
             vec,
             length_to_k(p, vec.len()),
-            &k_to_partitions_mults(length_to_k(p, vec.len())),
+            &k_to_partitions_mults(length_to_k(p, vec.len()), false),
             false,
         ),
         Policy::AdaptiveIPBB(p) => vec_mult_to_work(
             vec,
             length_to_k(p, vec.len()),
-            &k_to_partitions_mults(length_to_k(p, vec.len())),
+            &k_to_partitions_mults(length_to_k(p, vec.len()), false),
             true,
         ),
     }
 }
 
-
 struct SimResult {
     mean_response: f64,
     num_arrivals: u64,
     num_completions: u64,
-    overflow: bool,   // HY: if queue length threshold exceeded
+    overflow: bool, // HY: if queue length threshold exceeded
 }
 
 struct SimResult_Borg {
     mean_response: f64,
     num_arrivals: u64,
     num_completions: u64,
-    overflow: bool,   // HY: if queue length threshold exceeded
+    overflow: bool, // HY: if queue length threshold exceeded
     weight_mean_response: f64,
 }
-
-
-
-
 
 fn simulateInLoop(
     // main simulation loop.
@@ -1646,8 +1645,9 @@ fn simulateInLoop(
     while num_completions < num_jobs {
         queue.sort_by_key(|job| n64(policy.index(job)));
         // if queue.len() > num_jobs.isqrt() as usize {
-        if queue.len() > 10000 { // simple case
-        // if queue.len() > 100000 { // Borg case
+        if queue.len() > 10000 {
+            // simple case
+            // if queue.len() > 100000 { // Borg case
             // HY: let the Borg case be 100000
             // izzy: At this point, it is indistinguishable
             // from an unstable fair random walk.
@@ -1658,17 +1658,15 @@ fn simulateInLoop(
                 mean_response: 0.0,
                 num_arrivals,
                 num_completions,
-                overflow: true,// weight_mean_response: 0.0,
+                overflow: true, // weight_mean_response: 0.0,
             };
             break;
             return SimResult {
                 mean_response: 0.0,
                 num_arrivals,
                 num_completions,
-                overflow: true,// weight_mean_response: 0.0,
+                overflow: true, // weight_mean_response: 0.0,
             };
-
-
         }
         if DEBUG {
             println!(
@@ -1784,8 +1782,6 @@ fn simulateInLoop(
     }
 }
 
-
-
 fn simulate(
     // main simulation loop.
     policy: Policy,
@@ -1818,7 +1814,8 @@ fn simulate(
         queue.sort_by_key(|job| n64(policy.index(job)));
         // if queue.len() > num_jobs.isqrt() as usize {
         // if queue.len() > 10000 { // simple case
-        if queue.len() > 10000 { // Borg case
+        if queue.len() > 10000 {
+            // Borg case
             // HY: let the Borg case be 100000
             // izzy: At this point, it is indistinguishable
             // from an unstable fair random walk.
@@ -1963,14 +1960,14 @@ fn simulate_traces(
         queue.sort_by_key(|job| n64(policy.index(job)));
 
         // if queue.len() > num_jobs.isqrt() as usize {
-        if queue.len() > 10000 { // simple case
-        // if queue.len() > 100000 { // hy:Borg case use 100K
+        if queue.len() > 10000 {
+            // simple case
+            // if queue.len() > 100000 { // hy:Borg case use 100K
             println!("Error: queue length past threshold");
             break;
         }
 
-        let mut index_workable =
-            queue_indices(&queue, num_servers, policy, arr_lambda, &mut cache);
+        let mut index_workable = queue_indices(&queue, num_servers, policy, arr_lambda, &mut cache);
         index_workable.sort();
 
         let capacity: f64 = index_workable
@@ -2060,7 +2057,8 @@ fn simulateInLoop_traces(
     while num_completions < num_jobs {
         queue.sort_by_key(|job| n64(policy.index(job)));
         // if queue.len() > num_jobs.isqrt() as usize {
-        if queue.len() > 100000 { // Borg case
+        if queue.len() > 100000 {
+            // Borg case
             // HY: let the Borg case be 100000
             // izzy: At this point, it is indistinguishable
             // from an unstable fair random walk.
@@ -2080,8 +2078,7 @@ fn simulateInLoop_traces(
         // determine how many jobs need to get worked on in the sorted queue.
         //let num_workable = qscan(&queue, num_servers);
         //
-        let mut index_workable =
-            queue_indices(&queue, num_servers, policy, arr_lambda, &mut cache);
+        let mut index_workable = queue_indices(&queue, num_servers, policy, arr_lambda, &mut cache);
         index_workable.sort();
 
         let capacity: f64 = index_workable
@@ -2169,7 +2166,8 @@ fn simulateInLoop_traces_revised(
     //let mut cache = None;
 
     while num_completions < num_jobs {
-        if queue.len() > 100000 { // Borg case
+        if queue.len() > 100000 {
+            // Borg case
             // HY: let the Borg case be 100000
             return SimResult {
                 mean_response: 0.0,
@@ -2179,9 +2177,8 @@ fn simulateInLoop_traces_revised(
             };
         }
 
-        let mut index_workable =
-            p2_buckets_exp(&queue, 1024, true);
-            // p2_buckets_exp(&queue, num_servers, true); // HY: Hi Izzy, Here num_servers = 1 but we need 1024
+        let mut index_workable = p2_buckets_exp(&queue, 1024, true);
+        // p2_buckets_exp(&queue, num_servers, true); // HY: Hi Izzy, Here num_servers = 1 but we need 1024
         //FCFS    take_to_vec(qscan(&queue, num_servers));
 
         let capacity: f64 = index_workable
@@ -2190,7 +2187,7 @@ fn simulateInLoop_traces_revised(
             .sum();
         assert!(capacity < 1.0 + EPSILON);
 
-        let event = rng.gen_range(0.0 .. arr_lambda + index_workable.len() as f64);
+        let event = rng.gen_range(0.0..arr_lambda + index_workable.len() as f64);
 
         let was_arrival = event < arr_lambda;
 
@@ -2223,7 +2220,7 @@ fn simulateInLoop_traces_revised(
     //OR report mean response time
     // total_response / num_arrivals as f64
     SimResult {
-        mean_response: (total_number as f64 / num_arrivals.max(1) as f64)/ arr_lambda,
+        mean_response: (total_number as f64 / num_arrivals.max(1) as f64) / arr_lambda,
         num_arrivals,
         num_completions,
         overflow: false,
