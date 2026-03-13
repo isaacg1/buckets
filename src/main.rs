@@ -7,6 +7,7 @@ use rand_distr::Gamma;
 use rand_distr::Uniform;
 use smallvec::{SmallVec, smallvec};
 use std::f64::INFINITY;
+use std::collections::HashSet;
 use statrs::distribution::{Normal as StatNormal, ContinuousCDF};
 //use rand::seq::SliceRandom;
 
@@ -85,15 +86,15 @@ fn main() {
                         // Policy::DBB(16),
                         // Policy::DBB(64),
                         // Policy::FCFS, // 2.1
-                        Policy::FCFSB, // 2.3
+                        // Policy::FCFSB, // 2.3
                         // Policy::MSF, // 2.3
                         // Policy::BPT(8),
                         // Policy::BPT(64),
-                        Policy::BPTB(64),
+                        //Policy::BPTB(64),
                         // Policy::BPTB(1024),
                         // Policy:: IPB(8),
                         // Policy:: IPB(16),
-                        // Policy:: IPB(6),
+                         Policy:: IPB(24),
                         // Policy:: IPBB(6),
                         // Policy:: IPBB(18),
                         // Policy:: IPBB(8),
@@ -1239,10 +1240,31 @@ fn k_to_partitions_mults(k: usize) -> Vec<scored_vec_mult> {
     // number listed and no duplicates (hopefully)
 
     let mut ipar = Partitions::new(k); //hy: for k = 4, [[4], [3,1], [2,2], [2,1,1], [1,1,1,1]]
+    let mut to_remove = HashSet::new();
+    if k % 2 == 0 {
+        let mut half_ipar = Partitions::new(k/2);
+        let mut half_ipar_vec: Vec<Vec<usize>> = vec![];
+        while let Some(part) = half_ipar.next() {
+            half_ipar_vec.push(part.to_vec());
+        }
+        for i in 0..half_ipar_vec.len() {
+            for j in i+1..half_ipar_vec.len() {
+                let mut new = vec![];
+                new.extend(&half_ipar_vec[i]);
+                new.extend(&half_ipar_vec[j]);
+                new.sort();
+                to_remove.insert(new);
+            }
+        }
+    }
+    println!("to_remove: {}", to_remove.len());
     let mut partition_vector: Vec<scored_vec_mult> = vec![];
 
     while let Some(part) = ipar.next() {
         let current_partition: Vec<usize> = part.to_vec();
+        if to_remove.contains(&current_partition) {
+            continue
+        }
         let mut no_duplicates: Vec<usize> = vec![];
         let mut mults: Vec<usize> = vec![];
         // hy: current_partition might be, e.g., [2, 1, 1].
@@ -1265,6 +1287,8 @@ fn k_to_partitions_mults(k: usize) -> Vec<scored_vec_mult> {
         };
         partition_vector.push(current_set);
     }
+    println!("{}", partition_vector.len());
+    assert!(false);
     partition_vector
 }
 
