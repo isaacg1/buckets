@@ -30,7 +30,7 @@ fn main() {
     //let dist = Dist::Uniform(0.01,1.0);
     let dist = Dist::Expon(1.0);
     let num_servers = 1;
-    let num_jobs = 1_000_000;
+    let num_jobs = 10_000;
     // let num_jobs = 1_000_000;
     // let num_jobs = 7010740;
     // let num_jobs = 19366;
@@ -100,18 +100,18 @@ fn main() {
         // Policy::FCFS, // 2.1
         // Policy::FCFSB, // 2.3
         // Policy::MSF, // 2.3
-        // Policy::LSF,
-        Policy::BPT(8),
-        Policy::BPT(16),
+        Policy::LSF,
+        // Policy::BPT(8),
+        // Policy::BPT(16),
         // Policy::BPTB(32),
         // Policy::BPTB_LSF(64),
         // Policy::BPTB(64),
-        Policy:: IPB(8),
-        Policy:: IPB(16),
-        Policy::BPTB(8),
-        Policy::BPTB(16),
-        Policy:: IPBB(8),
-        Policy:: IPBB(16),
+        // Policy:: IPB(8),
+        // Policy:: IPB(16),
+        // Policy::BPTB(8),
+        // Policy::BPTB(16),
+        // Policy:: IPBB(8),
+        // Policy:: IPBB(16),
         //Policy::XIPB(32),
         // Policy::IPBB(6),
         // Policy::IPBB(12),
@@ -152,14 +152,16 @@ fn main() {
 
         let mut lambdas: Vec<f64> = Vec::new();
         // for i in (13..=14).rev() {
-        for i in  10..=17{ // JUMP
+        for i in  10..=16{ // JUMP
             //64 {
             lambdas.push(i as f64 / 10.0);
             // lambdas.push(i as f64 * 10.0);
         }
+        /*
         for i in 171..=189 {
             lambdas.push(i as f64 / 100.0);
         }
+        */
 
         for lambda in lambdas {
             // HY: If we do SIMPLE CONTINUOUS job req dist.
@@ -188,7 +190,7 @@ fn main() {
                 println!("{}; OVERFLOW; arrivals={};", lambda, result.num_arrivals,);
                 break;
             } else {
-                println!("{}; {};{};", lambda, result.mean_response,result.weight_mean_response);
+                println!("{}; {};{};{};{};", lambda, result.mean_response,result.mean_number,result.mean_number/result.mean_response,result.weight_mean_response);
                 if result.mean_response > 1000 as f64 {
                     println!(
                         "{}; OVERFLOW (MRT overflows); arrivals={};",
@@ -1789,6 +1791,7 @@ fn queue_indices(
 
 struct SimResult {
     mean_response: f64,
+    mean_number: f64,
     num_arrivals: u64,
     num_completions: u64,
     overflow: bool, // HY: if queue length threshold exceeded
@@ -1816,6 +1819,8 @@ fn simulateInLoop(
     let mut num_completions = 0;
     let mut queue: Vec<Job> = vec![];
     let mut total_response = 0.0;
+    //let mut total_number = 0;
+    let mut total_number_2 = 0.0;
     let mut weight_total_response = 0.0;
     let mut time = 0.0;
     let mut rng = StdRng::seed_from_u64(seed);
@@ -1846,6 +1851,7 @@ fn simulateInLoop(
             println!("Error: queue length past threshold");
             return SimResult {
                 mean_response: 0.0,
+                mean_number: 0.0,
                 num_arrivals,
                 num_completions,
                 overflow: true, //
@@ -1904,6 +1910,7 @@ fn simulateInLoop(
 
         // time moves forward
         time += timestep;
+        total_number_2 += timestep * queue.len() as f64;
 
         // all jobs currently in service get worked on
         /*
@@ -1940,6 +1947,7 @@ fn simulateInLoop(
 
         if was_arrival {
             total_work += queue.iter().map(|job| job.rem_size).sum::<f64>();
+            //total_number += queue.len();
             num_arrivals += 1;
             let new_job_size = dist.sample(&mut rng);
             let new_service_req = req_dist.sample(&mut rng);
@@ -1960,6 +1968,8 @@ fn simulateInLoop(
     // total_response / num_completions as f64
     SimResult {
         mean_response: total_response / num_completions.max(1) as f64,
+        //mean_number: total_number as f64 / num_arrivals.max(1) as f64,
+        mean_number: total_number_2 / time,
         num_arrivals,
         num_completions,
         overflow: false,
@@ -2252,6 +2262,7 @@ fn simulateInLoop_traces(
             //A longer simulation is needed to demonstrate.
             return SimResult {
                 mean_response: 0.0,
+                mean_number: todo!(),
                 num_arrivals,
                 num_completions,
                 overflow: true,
@@ -2327,6 +2338,7 @@ fn simulateInLoop_traces(
     // total_response / num_completions as f64
     SimResult {
         mean_response: total_response / num_completions.max(1) as f64,
+        mean_number: todo!(),
         num_arrivals,
         num_completions,
         overflow: false,
@@ -2360,6 +2372,7 @@ fn simulateInLoop_traces_revised(
             // HY: let the Borg case be 100000
             return SimResult {
                 mean_response: 0.0,
+                mean_number: todo!(),
                 num_arrivals,
                 num_completions,
                 overflow: true,
@@ -2411,6 +2424,7 @@ fn simulateInLoop_traces_revised(
     // total_response / num_completions as f64
     SimResult {
         mean_response: (total_number as f64 / num_completions.max(1) as f64) / arr_lambda,
+        mean_number: todo!(),
         num_arrivals,
         num_completions,
         overflow: false,
