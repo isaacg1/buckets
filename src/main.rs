@@ -30,7 +30,7 @@ fn main() {
     //let dist = Dist::Uniform(0.01,1.0);
     let dist = Dist::Expon(1.0);
     let num_servers = 1;
-    let num_jobs = 100_000;
+    let num_jobs = 1_000_000;
     // let num_jobs = 1_000_000;
     // let num_jobs = 7010740;
     // let num_jobs = 19366;
@@ -45,15 +45,25 @@ fn main() {
     // );
     // let job_req_dist = Dist::Triangular(1.0);
     // let job_req_dist = Dist::BExp(0.5);
-    // let job_req_dist = Dist::BLomax(2.0, 1.0);
-
-    // let job_req_dist = Dist:: TruncatedN(0.5,1.0);
-    //let job_req_dist = Dist::TruncatedN(0.29, 0.04 * 0.04);
+    // let job_req_dist = Dist::BLomaxInv(2.0, 1.0);
+    // let job_req_dist = Dist::TriangularInv(0.75);
+    let job_req_dist = Dist:: TruncatedN(0.5,1.0);
+    // let job_req_dist = Dist:: TruncatedN(0.27,0.25*0.25);
+    // let job_req_dist = Dist::TruncatedN((1.0/3.0+1.0/5.0)/2.0, (1.0/15.0) * (1.0/15.0));
+    // let job_req_dist = Dist::TwoIsoTri(0.0,0.0,0.0, 0.25,0.5,1.0);
+    // let job_req_dist = Dist::TwoIsoTri(0.0,0.0,0.0, 0.125,0.5,1.0);
     // let job_req_dist = Dist:: TwoUnif( 0.45, 0.5, 0.4, 0.28, 0.33, 0.6 );
     // let job_req_dist = Dist:: TwoUnif( 0.22, 0.25, 0.5714, 0.30, 0.33, 0.4286 );
-    // let job_req_dist = Dist::TwoTruncatedN(0.24, 0.005*0.005,0.5714, 0.32, 0.005*0.005, 0.4286);
-    let job_req_dist = Dist::TwoTruncatedN(0.47, 0.005*0.005,0.4, 0.31, 0.005*0.005, 0.6);
+    // let job_req_dist = Dist::TwoTruncatedN(0.27, 0.25*0.25,0.5, 0.58, 0.25*0.25, 0.5);
+
+    // let job_req_dist = Dist::TwoTruncatedN(0.27, 0.5*0.5,0.5714, 0.65, 0.5*0.5, 0.4286);
+    // let job_req_dist = Dist::TwoTruncatedN(0.47, 0.005*0.005,0.4, 0.31, 0.005*0.005, 0.6);
     // let job_req_dist = Dist::TwoTruncatedN(0.29, 0.083*0.083,0.7, 0.95, 0.05*0.05, 0.3);
+    // let job_req_dist = Dist::ThreeTruncatedN(0.17, 0.03*0.03, 0.4, 0.30, 0.03*0.03, 0.4, 0.63, 0.03*0.03,0.2); // JUMP
+    // let job_req_dist = Dist::ThreeTruncatedN(0.17, 0.03*0.03, 0.5, 0.30, 0.03*0.03, 0.25, 0.63, 0.03*0.03,0.25);
+    // let job_req_dist = Dist::TwoTruncatedN(0.17, 0.03*0.03,0.1, 0.47, 0.05*0.05, 0.9);
+    // let job_req_dist = Dist::ThreeTruncatedN(0.27, 0.03*0.03, 0.3, 0.37, 0.03*0.03, 0.15, 0.47, 0.03*0.03,0.55);
+    // let job_req_dist = Dist::FourTruncatedN(0.47, 0.3, 0.30, 0.3, 0.17, 0.3, 0.97, 0.1, 0.03*0.03);
 
     // let policy = Policy::AdaptiveBPTB(2.0);
     // let policy = Policy::FCFS;
@@ -77,34 +87,48 @@ fn main() {
     //                     Policy::FCFS, Policy::FCFSB,Policy::MSF,Policy::AdaptiveBPTB(1.5),Policy::AdaptiveBPTB(2.0)];
 
     let policies = vec![
+        // Policy::DB(4),
         // Policy::DB(8),
         // Policy::DB(16),
+        // Policy::DB(32),
         // Policy::DB(64),
+        // Policy::DBB(4),
         // Policy::DBB(8),
         // Policy::DBB(16),
+        // Policy::DBB(32),
         // Policy::DBB(64),
-        //Policy::FCFS, // 2.1
-        Policy::FCFSB, // 2.3
+        // Policy::FCFS, // 2.1
+        // Policy::FCFSB, // 2.3
         // Policy::MSF, // 2.3
-        // Policy::BPT(8),
-        //Policy::BPT(32),
-        Policy::BPTB(32),
-        // Policy::BPTB(1024),
-        // Policy:: IPB(8),
-        // Policy:: IPB(16),
+        // Policy::LSF,
+        Policy::BPT(8),
+        Policy::BPT(16),
+        // Policy::BPTB(32),
+        // Policy::BPTB_LSF(64),
+        // Policy::BPTB(64),
+        Policy:: IPB(8),
+        Policy:: IPB(16),
+        Policy::BPTB(8),
+        Policy::BPTB(16),
+        Policy:: IPBB(8),
+        Policy:: IPBB(16),
         //Policy::XIPB(32),
-        Policy::XIPBB(32),
+        // Policy::IPBB(6),
+        // Policy::IPBB(12),
+        // Policy::IPBB(30),
         //Policy::XIPB(6),
         // Policy:: IPBB(6),
-        // Policy:: IPBB(18),
+        // Policy:: XIPBB(12),
+        // Policy:: XIPBB(30),
         // Policy:: IPBB(8),
         // Policy:: IPBB(16),
         // Policy::LSF,
         // Policy::AdaptiveBPTB(1.5),
+        // Policy::AdaptiveBPTB(2.0),
     ];
 
-    // let main_req_trace = read_one_col_csv("Memory_Borg.csv");
-    // let main_req_trace: Vec<f64> = main_req_trace[..30_000].to_vec();
+    // let main_req_trace = read_one_col_csv("CPU_Borg_trimmed_1M.csv"); // hy: Need for Borg
+    // let main_req_trace: Vec<f64> = main_req_trace[..10_000].to_vec();
     // for &policy in &policies {
     // for seed in 0..10 {
     //let mut rng = StdRng::seed_from_u64(seed);
@@ -123,29 +147,23 @@ fn main() {
         //     "Policy : {:?}, Duration: {:?}, Seed: {}",
         //     policy, dist, seed
         // );
-        println!(" Duration: {:?}, Seed: {}", dist, seed);
-        let mut lambdas: Vec<f64> = Vec::new();
+        // println!(" Duration: {:?}, Seed: {}", dist, seed);
 
+
+        let mut lambdas: Vec<f64> = Vec::new();
         // for i in (13..=14).rev() {
-        for i in 20..=30 {
+        for i in  10..=17{ // JUMP
             //64 {
-            // lambdas.push(i as f64 / 10.0);
             lambdas.push(i as f64 / 10.0);
+            // lambdas.push(i as f64 * 10.0);
         }
-        // for i in 291..=299 {
-        //     lambdas.push(i as f64 / 100.0);
-        // }
+        for i in 171..=189 {
+            lambdas.push(i as f64 / 100.0);
+        }
 
         for lambda in lambdas {
-            // for lam_base in 181..190{
-            // for lam_base in 301..310{//} 1..20 {
-
-            // let lambda = lam_base as f64 /100.0;
-            // let lambda = lam_base as f64 * 10.0;
             // HY: If we do SIMPLE CONTINUOUS job req dist.
-            let start = Instant::now();
-            let result = simulateInLoop(
-                policy,
+            let result = simulateInLoop(policy,
                 num_servers,
                 num_jobs,
                 dist,
@@ -153,16 +171,27 @@ fn main() {
                 seed,
                 job_req_dist,
             );
+
+
+
+            // let result = simulateInLoop_traces(
+            //     policy,
+            //     num_servers,
+            //     dist,
+            //     lambda,
+            //     seed,
+            //     // job_req_dist,
+            //     &main_req_trace,
+            // );
             //
-            // let elapsed = start.elapsed();
             if result.overflow {
                 println!("{}; OVERFLOW; arrivals={};", lambda, result.num_arrivals,);
                 break;
             } else {
-                println!("{}; {};", lambda, result.mean_response,);
-                if result.mean_response > 1000.00 as f64 {
+                println!("{}; {};{};", lambda, result.mean_response,result.weight_mean_response);
+                if result.mean_response > 1000 as f64 {
                     println!(
-                        "{}; OVERFLOW (MRT>1000); arrivals={};",
+                        "{}; OVERFLOW (MRT overflows); arrivals={};",
                         lambda, result.num_arrivals,
                     );
                     break;
@@ -276,13 +305,18 @@ enum Dist {
     Uniform(f64, f64),
     Constant(f64),
     BLomax(f64, f64), // hy: Bounded Lomax with shape parameter \alpha and scaling parameter \lambda
+    BLomaxInv(f64, f64),
     MUnif([f64; 2], [f64; 2]), // hy: mixed uniform with two breakpoints
     //MUnif(Vec<f64>, Vec<f64>), // hy: mixed uniform with decreasing dexsity
     Triangular(f64),      //hy: triangular distribution with right endpoint u
+    TriangularInv(f64),
     BExp(f64), // hy: Bounded exponential distribution: exponential truncated to [0,1], density \prop e^(−\lambda t)
     TruncatedN(f64, f64), // hy: Bounded normal distribution: normal distribution truncated to [0,1]
     TwoUnif(f64, f64, f64, f64, f64, f64),
     TwoTruncatedN(f64, f64, f64, f64, f64, f64),
+    ThreeTruncatedN (f64,  f64,  f64,  f64, f64,  f64, f64, f64, f64), // hy: Mixed Bounded normal distribution, with probability p_i distributed TN(u1,v1)
+    FourTruncatedN (f64,  f64,  f64,  f64, f64,  f64, f64, f64, f64),
+    TwoIsoTri ( f64, f64, f64, f64, f64, f64,),
 }
 
 impl Dist {
@@ -313,6 +347,16 @@ impl Dist {
                 let u = rng.r#gen::<f64>();
                 let inner = 1.0 - u * c;
                 lambda * (inner.powf(-1.0 / alpha) - 1.0)
+            }
+            Dist::BLomaxInv(alpha, lambda) => {
+                // hy: compute the normalization constant c
+                let t = 1.0 + 1.0 / lambda;
+                let r = t.powf(-alpha);
+                let c = 1.0 - r;
+                // hy: obtain the CDF and use inverse-transform sampling
+                let u = rng.r#gen::<f64>();
+                let inner = 1.0 - u * c;
+                1.0-lambda * (inner.powf(-1.0 / alpha) - 1.0)
             }
             Dist::MUnif(v, p) => {
                 let d = v.len();
@@ -359,6 +403,12 @@ impl Dist {
                 let U = rng.r#gen::<f64>();
                 u * (1.0 - (1.0 - U).sqrt())
             }
+            Dist::TriangularInv(u) => {
+                // hy: Inverse‐CDF: F(t) = (2ut - t^2)/u^2, so
+                // hy: t = u * (1 - sqrt(1 - U)), U~Unif(0,1)
+                let U = rng.r#gen::<f64>();
+                1.0-u * (1.0 - (1.0 - U).sqrt())
+            }
             Dist::BExp(lambda) => {
                 let exp_neg = (-lambda).exp();
                 let c = 1.0 - exp_neg;
@@ -401,6 +451,58 @@ impl Dist {
                     Dist::TruncatedN(*u2, *v2).sample(rng)
                 }
             }
+            Dist::ThreeTruncatedN (
+                u1, v1, p1,
+                u2, v2, p2,
+                u3, v3, p3,
+            ) => {
+                let u: f64 = rng.r#gen();
+                if u < *p1 {
+                    Dist::TruncatedN(*u1, *v1).sample(rng)
+                } else if u < *p1 + *p2 {
+                    Dist::TruncatedN(*u2, *v2).sample(rng)
+                } else {
+                    Dist::TruncatedN(*u3, *v3).sample(rng)
+                }
+            }
+            Dist::FourTruncatedN (
+                u1, p1,
+                u2, p2,
+                u3, p3,
+                u4, p4,
+                v,
+            ) => {
+                let u: f64 = rng.r#gen();
+                if u < *p1 {
+                    Dist::TruncatedN(*u1, *v).sample(rng)
+                } else if u < *p1 + *p2 {
+                    Dist::TruncatedN(*u2, *v).sample(rng)
+                }else if u < *p1 + *p2+*p3 {
+                    Dist::TruncatedN(*u3, *v).sample(rng)
+                }
+                else {
+                    Dist::TruncatedN(*u4, *v).sample(rng)
+                }
+            }
+            Dist::TwoIsoTri (l1, u1, p1, l2, u2, p2) => {
+
+                let mix_u: f64 = rng.r#gen();
+
+                let (l, u) = if mix_u < *p1 {
+                    (*l1, *u1)
+                } else {
+                    (*l2, *u2)
+                };
+
+                let x: f64 = rng.r#gen();
+                let width = u - l;
+
+                if x < 0.5 {
+                    l + width * (x / 2.0).sqrt()
+                } else {
+                    u - width * ((1.0 - x) / 2.0).sqrt()
+                }
+            }
         }
     }
     fn mean(&self) -> f64 {
@@ -424,6 +526,18 @@ impl Dist {
                 // E[X] = \lambda·( (term1 - term3) + term2 ) / c
                 lambda * ((term1 - term3) + term2) / c
             }
+            Dist::BLomaxInv(alpha, lambda) => {
+                let t = 1.0 + 1.0 / lambda;
+                let r = t.powf(-alpha);
+                let c = 1.0 - r;
+
+                let term1 = alpha * t.powf(1.0 - alpha) / (1.0 - alpha);
+                let term2 = t.powf(-alpha);
+                let term3 = 1.0 / (1.0 - alpha);
+
+                // E[X] = \lambda·( (term1 - term3) + term2 ) / c
+                1.0-lambda * ((term1 - term3) + term2) / c
+            }
             Dist::MUnif(v, p) => {
                 // E[X] = \sum_i p[i] · E[U(v[i−1], v[i])]
                 //      = \sum_i p[i] · (v[i−1] + v[i]) / 2
@@ -438,6 +552,7 @@ impl Dist {
                     .sum()
             }
             Dist::Triangular(u) => u / 3.0,
+            Dist:: TriangularInv(u) => {1.0-u/3.0}
             Dist::BExp(lambda) => {
                 let r = (-lambda).exp();
                 let c = 1.0 - r;
@@ -464,6 +579,36 @@ impl Dist {
                 let m2 = Dist::TruncatedN(*u2, *v2).mean();
                 *p1 * m1 + *p2 * m2
             }
+            Dist::ThreeTruncatedN (
+                u1, v1, p1,
+                u2, v2, p2,
+                u3, v3, p3,
+            )=> {
+                let m1 = Dist::TruncatedN(*u1, *v1).mean();
+                let m2 = Dist::TruncatedN(*u2, *v2).mean();
+                let m3 = Dist::TruncatedN(*u3, *v3).mean();
+
+                *p1 * m1 + *p2 * m2 + *p3 * m3
+            }
+            Dist::FourTruncatedN (
+                u1, p1,
+                u2, p2,
+                u3, p3,
+                u4, p4,
+                v,
+            )=> {
+                let m1 = Dist::TruncatedN(*u1, *v).mean();
+                let m2 = Dist::TruncatedN(*u2, *v).mean();
+                let m3 = Dist::TruncatedN(*u3, *v).mean();
+                let m4 = Dist::TruncatedN(*u4, *v).mean();
+                *p1 * m1 + *p2 * m2 + *p3 * m3 + *p4 * m4
+            }
+            Dist::TwoIsoTri (l1, u1, p1, l2, u2, p2) => {
+                let m1 = (*l1 + *u1) / 2.0;
+                let m2 = (*l2 + *u2) / 2.0;
+                *p1 * m1 + *p2 * m2
+            }
+
         }
     }
 
@@ -492,6 +637,19 @@ impl Dist {
 
                 alpha * lambda * lambda * (bu - bl) / c
             }
+            Dist::BLomaxInv(alpha, lambda) => { //Not true
+                let t = 1.0 + 1.0 / lambda;
+                let r = t.powf(-alpha);
+                let c = 1.0 - r;
+
+                let bu = t.powf(2.0 - alpha) / (2.0 - alpha)
+                    - 2.0 * t.powf(1.0 - alpha) / (1.0 - alpha)
+                    + t.powf(-alpha) / (-alpha);
+
+                let bl = 1.0 / (2.0 - alpha) - 2.0 / (1.0 - alpha) - 1.0 / alpha;
+
+                alpha * lambda * lambda * (bu - bl) / c
+            }
             Dist::MUnif(v, p) => {
                 let d = v.len();
                 p.iter()
@@ -506,6 +664,7 @@ impl Dist {
                     .sum()
             }
             Dist::Triangular(u) => u * u / 6.0,
+            Dist::TriangularInv(u) => u * u / 6.0, // Not true
             Dist::BExp(lambda) => {
                 let r = (-lambda).exp();
                 let c = 1.0 - r;
@@ -540,6 +699,36 @@ impl Dist {
             Dist::TwoTruncatedN(u1, v1, p1, u2, v2, p2) => {
                 let e2_1 = Dist::TruncatedN(*u1, *v1).meansquare();
                 let e2_2 = Dist::TruncatedN(*u2, *v2).meansquare();
+                *p1 * e2_1 + *p2 * e2_2
+            }
+            Dist::ThreeTruncatedN (
+                u1, v1, p1,
+                u2, v2, p2,
+                u3, v3, p3,
+            ) => {
+                let e2_1 = Dist::TruncatedN(*u1, *v1).meansquare();
+                let e2_2 = Dist::TruncatedN(*u2, *v2).meansquare();
+                let e2_3 = Dist::TruncatedN(*u3, *v3).meansquare();
+
+                *p1 * e2_1 + *p2 * e2_2 + *p3 * e2_3
+            }
+            Dist::FourTruncatedN (
+                u1, p1,
+                u2, p2,
+                u3, p3,
+                u4, p4,
+                v,
+            ) => {
+                let e2_1 = Dist::TruncatedN(*u1, *v).meansquare();
+                let e2_2 = Dist::TruncatedN(*u2, *v).meansquare();
+                let e2_3 = Dist::TruncatedN(*u3, *v).meansquare();
+                let e2_4 = Dist::TruncatedN(*u4, *v).meansquare();
+
+                *p1 * e2_1 + *p2 * e2_2 + *p3 * e2_3 + *p4 * e2_4
+            }
+            Dist::TwoIsoTri (l1, u1, p1, l2, u2, p2) => {
+                let e2_1 = (7.0 * l1.powi(2) + 10.0 * l1 * u1 + 7.0 * u1.powi(2)) / 24.0;
+                let e2_2 = (7.0 * l2.powi(2) + 10.0 * l2 * u2 + 7.0 * u2.powi(2)) / 24.0;
                 *p1 * e2_1 + *p2 * e2_2
             }
         }
@@ -1603,15 +1792,16 @@ struct SimResult {
     num_arrivals: u64,
     num_completions: u64,
     overflow: bool, // HY: if queue length threshold exceeded
-}
-
-struct SimResult_Borg {
-    mean_response: f64,
-    num_arrivals: u64,
-    num_completions: u64,
-    overflow: bool, // HY: if queue length threshold exceeded
     weight_mean_response: f64,
 }
+
+// struct SimResult_Borg {
+//     mean_response: f64,
+//     num_arrivals: u64,
+//     num_completions: u64,
+//     overflow: bool, // HY: if queue length threshold exceeded
+//     weight_mean_response: f64,
+// }
 
 fn simulateInLoop(
     // main simulation loop.
@@ -1626,7 +1816,7 @@ fn simulateInLoop(
     let mut num_completions = 0;
     let mut queue: Vec<Job> = vec![];
     let mut total_response = 0.0;
-    // let mut weight_total_response = 0.0;
+    let mut weight_total_response = 0.0;
     let mut time = 0.0;
     let mut rng = StdRng::seed_from_u64(seed);
     let arrival_dist = Exp::new(arr_lambda).unwrap();
@@ -1645,7 +1835,7 @@ fn simulateInLoop(
     while num_completions < num_jobs {
         queue.sort_by_key(|job| n64(policy.index(job)));
         // if queue.len() > num_jobs.isqrt() as usize {
-        if queue.len() > 10000 {
+        if queue.len() > 100000 {
             // simple case
             // if queue.len() > 100000 { // Borg case
             // HY: let the Borg case be 100000
@@ -1654,19 +1844,14 @@ fn simulateInLoop(
             // If you still think it's a stable,
             // A longer simulation is needed to demonstrate.
             println!("Error: queue length past threshold");
-            SimResult {
-                mean_response: 0.0,
-                num_arrivals,
-                num_completions,
-                overflow: true, // weight_mean_response: 0.0,
-            };
-            break;
             return SimResult {
                 mean_response: 0.0,
                 num_arrivals,
                 num_completions,
-                overflow: true, // weight_mean_response: 0.0,
+                overflow: true, //
+                weight_mean_response: 0.0,
             };
+            // break;
         }
         if DEBUG {
             println!(
@@ -1737,7 +1922,7 @@ fn simulateInLoop(
             if queue[index].rem_size < EPSILON {
                 let job = queue.remove(index);
                 total_response += time - job.arrival_time;
-                // weight_total_response += (time - job.arrival_time)*job.service_req; //hy:Borg Delete when not Borg
+                weight_total_response += (time - job.arrival_time)*job.service_req; //hy:Borg Delete when not Borg
                 num_completions += 1;
             }
         }
@@ -1770,15 +1955,15 @@ fn simulateInLoop(
     }
 
     // report mean queue load
-    //total_work / num_arrivals as f64
+    //total_work / num_completions as f64
     //OR report mean response time
-    // total_response / num_arrivals as f64
+    // total_response / num_completions as f64
     SimResult {
-        mean_response: total_response / num_arrivals.max(1) as f64,
+        mean_response: total_response / num_completions.max(1) as f64,
         num_arrivals,
         num_completions,
         overflow: false,
-        // weight_mean_response: weight_total_response as f64,
+        weight_mean_response: weight_total_response / num_completions.max(1) as f64,
     }
 }
 
@@ -1925,9 +2110,9 @@ fn simulate(
     }
 
     // report mean queue load
-    //total_work / num_arrivals as f64
+    //total_work / num_completions as f64
     //OR report mean response time
-    total_response / num_arrivals as f64
+    total_response / num_completions as f64
 }
 
 fn simulate_traces(
@@ -2022,7 +2207,7 @@ fn simulate_traces(
         }
     }
 
-    total_response / num_arrivals.max(1) as f64
+    total_response / num_completions.max(1) as f64
 }
 
 fn simulateInLoop_traces(
@@ -2039,6 +2224,7 @@ fn simulateInLoop_traces(
     let mut num_completions = 0;
     let mut queue: Vec<Job> = vec![];
     let mut total_response = 0.0;
+    let mut weight_total_response = 0.0;
     let mut time = 0.0;
     let mut rng = StdRng::seed_from_u64(seed);
     let arrival_dist = Exp::new(arr_lambda).unwrap();
@@ -2057,7 +2243,7 @@ fn simulateInLoop_traces(
     while num_completions < num_jobs {
         queue.sort_by_key(|job| n64(policy.index(job)));
         // if queue.len() > num_jobs.isqrt() as usize {
-        if queue.len() > 100000 {
+        if queue.len() > 10000 {
             // Borg case
             // HY: let the Borg case be 100000
             // izzy: At this point, it is indistinguishable
@@ -2069,6 +2255,7 @@ fn simulateInLoop_traces(
                 num_arrivals,
                 num_completions,
                 overflow: true,
+                weight_mean_response: 0.0,
             };
 
             // println!("Error: queue length past threshold");
@@ -2106,6 +2293,7 @@ fn simulateInLoop_traces(
             if queue[index].rem_size < EPSILON {
                 let job = queue.remove(index);
                 total_response += time - job.arrival_time;
+                weight_total_response += (time - job.arrival_time)*job.service_req;
                 num_completions += 1;
             }
         }
@@ -2134,14 +2322,15 @@ fn simulateInLoop_traces(
     }
 
     // report mean queue load
-    //total_work / num_arrivals as f64
+    //total_work / num_completions as f64
     //OR report mean response time
-    // total_response / num_arrivals as f64
+    // total_response / num_completions as f64
     SimResult {
-        mean_response: total_response / num_arrivals.max(1) as f64,
+        mean_response: total_response / num_completions.max(1) as f64,
         num_arrivals,
         num_completions,
         overflow: false,
+        weight_mean_response: weight_total_response/ num_completions.max(1) as f64,
     }
 }
 
@@ -2174,6 +2363,7 @@ fn simulateInLoop_traces_revised(
                 num_arrivals,
                 num_completions,
                 overflow: true,
+                weight_mean_response: 0.0,
             };
         }
 
@@ -2216,13 +2406,14 @@ fn simulateInLoop_traces_revised(
     }
 
     // report mean queue load
-    //total_work / num_arrivals as f64
+    //total_work / num_completions as f64
     //OR report mean response time
-    // total_response / num_arrivals as f64
+    // total_response / num_completions as f64
     SimResult {
-        mean_response: (total_number as f64 / num_arrivals.max(1) as f64) / arr_lambda,
+        mean_response: (total_number as f64 / num_completions.max(1) as f64) / arr_lambda,
         num_arrivals,
         num_completions,
         overflow: false,
+        weight_mean_response: total_number as f64 / num_completions.max(1) as f64/ arr_lambda,
     }
 }
